@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app-deployment  
+  namespace: web-app
+spec:
+  replicas: 2 
+  selector:
+    matchLabels:
+      app: web-app 
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: web-app 
+    spec:
+      containers:
+      - name: web-app-container 
+        image: busybox  
+        command: ["/bin/sh", "-c", "while true; do echo $(date) >> /tmp/index.html; sleep 1;done"]
+        ports:
+        - containerPort: 80 
+        volumeMounts:
+          - name: config-volume
+            mountPath: /app/config
+          - name: data-volume
+            mountPath: /app/data
+      volumes:
+        - name: config-volume
+          configMap:
+            name: web-app-config  
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: web-pvc  
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - your-app
+              topologyKey: topology.kubernetes.io/zone
